@@ -28,3 +28,17 @@ export function addMessage(data: Omit<ContactMessage, 'id' | 'createdAt'>) {
 export function getMessages() {
   return globalForMessages.messages;
 }
+
+export function updateMessage(id: string, updates: Partial<ContactMessage>) {
+  const index = globalForMessages.messages.findIndex((m) => m.id === id);
+  if (index === -1) return null;
+  globalForMessages.messages[index] = { ...globalForMessages.messages[index], ...updates };
+  return globalForMessages.messages[index];
+}
+
+export function deleteMessage(id: string) {
+  const index = globalForMessages.messages.findIndex((m) => m.id === id);
+  if (index === -1) return false;
+  globalForMessages.messages.splice(index, 1);
+  return true;
+}

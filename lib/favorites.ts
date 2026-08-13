@@ -1,58 +1,46 @@
-export interface FavoriteItem {
-  id: string;
-  title: string;
-  url: string;
-  category: string;
-  createdAt: string;
+import { prisma } from './prisma';
+
+export async function getFavorites(search?: string, category?: string) {
+  const where: any = {};
+
+  if (category) {
+    where.category = { equals: category, mode: 'insensitive' };
+  }
+
+  if (search) {
+    where.OR = [
+      { title: { contains: search, mode: 'insensitive' } },
+      { url: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+
+  return prisma.favorite.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
-const globalForFavorites = globalThis as unknown as {
-  favorites: FavoriteItem[];
-};
-
-if (!globalForFavorites.favorites) {
-  globalForFavorites.favorites = [
-    {
-      id: 'fav-1',
-      title: 'Next.js Documentation',
-      url: 'https://nextjs.org/docs',
-      category: 'Documentation',
-      createdAt: new Date().toISOString(),
-    },
-    {
-      id: 'fav-2',
-      title: 'TypeScript Handbook',
-      url: 'https://www.typescriptlang.org/docs/',
-      category: 'Tutorial',
-      createdAt: new Date().toISOString(),
-    },
-  ];
+export async function getFavoriteById(id: string) {
+  return prisma.favorite.findUnique({
+    where: { id },
+  });
 }
 
-export function getFavorites() {
-  return globalForFavorites.favorites;
+export async function addFavorite(data: { title: string; url: string; category: string }) {
+  return prisma.favorite.create({
+    data,
+  });
 }
 
-export function addFavorite(data: Omit<FavoriteItem, 'id' | 'createdAt'>) {
-  const item: FavoriteItem = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    ...data,
-  };
-  globalForFavorites.favorites.push(item);
-  return item;
+export async function updateFavorite(id: string, updates: Partial<{ title: string; url: string; category: string }>) {
+  return prisma.favorite.update({
+    where: { id },
+    data: updates,
+  });
 }
 
-export function updateFavorite(id: string, updates: Partial<FavoriteItem>) {
-  const index = globalForFavorites.favorites.findIndex((f) => f.id === id);
-  if (index === -1) return null;
-  globalForFavorites.favorites[index] = { ...globalForFavorites.favorites[index], ...updates };
-  return globalForFavorites.favorites[index];
-}
-
-export function deleteFavorite(id: string) {
-  const index = globalForFavorites.favorites.findIndex((f) => f.id === id);
-  if (index === -1) return false;
-  globalForFavorites.favorites.splice(index, 1);
-  return true;
+export async function deleteFavorite(id: string) {
+  return prisma.favorite.delete({
+    where: { id },
+  });
 }

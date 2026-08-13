@@ -1,44 +1,21 @@
-export interface ContactMessage {
-  id: string;
-  name: string;
-  email: string;
-  message: string;
-  createdAt: string;
+import { prisma } from './prisma';
+
+export async function addMessage(data: { name: string; email: string; message: string }) {
+  return prisma.message.create({ data });
 }
 
-// ใช้ globalThis เพื่อให้ใน-memory array แชร์ตัวเดียวกันข้าม bundle chunks ใน Next.js
-const globalForMessages = globalThis as unknown as {
-  messages: ContactMessage[];
-};
-
-if (!globalForMessages.messages) {
-  globalForMessages.messages = [];
+export async function getMessages() {
+  return prisma.message.findMany({ orderBy: { createdAt: 'desc' } });
 }
 
-export function addMessage(data: Omit<ContactMessage, 'id' | 'createdAt'>) {
-  const item: ContactMessage = {
-    id: crypto.randomUUID(),
-    createdAt: new Date().toISOString(),
-    ...data,
-  };
-  globalForMessages.messages.push(item);
-  return item;
+export async function getMessageById(id: string) {
+  return prisma.message.findUnique({ where: { id } });
 }
 
-export function getMessages() {
-  return globalForMessages.messages;
+export async function updateMessage(id: string, updates: { name?: string; email?: string; message?: string }) {
+  return prisma.message.update({ where: { id }, data: updates });
 }
 
-export function updateMessage(id: string, updates: Partial<ContactMessage>) {
-  const index = globalForMessages.messages.findIndex((m) => m.id === id);
-  if (index === -1) return null;
-  globalForMessages.messages[index] = { ...globalForMessages.messages[index], ...updates };
-  return globalForMessages.messages[index];
-}
-
-export function deleteMessage(id: string) {
-  const index = globalForMessages.messages.findIndex((m) => m.id === id);
-  if (index === -1) return false;
-  globalForMessages.messages.splice(index, 1);
-  return true;
+export async function deleteMessage(id: string) {
+  return prisma.message.delete({ where: { id } });
 }

@@ -1,29 +1,20 @@
 import * as FavoriteModel from './favorites';
 import { NotFoundError, ValidationError } from './errors';
+import { Prisma } from '@prisma/client';
 
-export function listFavorites(search?: string, category?: string) {
-  let all = FavoriteModel.getFavorites();
-  if (search) {
-    const s = search.toLowerCase();
-    all = all.filter(
-      (f) => f.title.toLowerCase().includes(s) || f.url.toLowerCase().includes(s)
-    );
-  }
-  if (category) {
-    all = all.filter((f) => f.category.toLowerCase() === category.toLowerCase());
-  }
-  return all;
+export async function listFavorites(search?: string, category?: string) {
+  return await FavoriteModel.getFavorites(search, category);
 }
 
-export function getFavoriteById(id: string) {
-  const item = FavoriteModel.getFavorites().find((f) => f.id === id);
+export async function getFavoriteById(id: string) {
+  const item = await FavoriteModel.getFavoriteById(id);
   if (!item) {
     throw new NotFoundError('ไม่พบรายการโปรดนี้');
   }
   return item;
 }
 
-export function createFavorite(data: { title: string; url: string; category?: string }) {
+export async function createFavorite(data: { title: string; url: string; category?: string }) {
   if (!data.title || data.title.trim() === '') {
     throw new ValidationError('หัวข้อรายการโปรดห้ามเป็นค่าว่าง');
   }
@@ -31,14 +22,21 @@ export function createFavorite(data: { title: string; url: string; category?: st
     throw new ValidationError('URL ห้ามเป็นค่าว่าง');
   }
 
-  return FavoriteModel.addFavorite({
-    title: data.title.trim(),
-    url: data.url.trim(),
-    category: data.category?.trim() || 'General',
-  });
+  try {
+    return await FavoriteModel.addFavorite({
+      title: data.title.trim(),
+      url: data.url.trim(),
+      category: data.category?.trim() || 'General',
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new ValidationError('URL นี้ถูกใช้ไปแล้วในระบบรายการโปรด');
+    }
+    throw err;
+  }
 }
 
-export function editFavorite(
+export async function editFavorite(
   id: string,
   updates: Partial<{ title: string; url: string; category: string }>
 ) {
@@ -49,17 +47,26 @@ export function editFavorite(
     throw new ValidationError('URL ห้ามเป็นค่าว่าง');
   }
 
-  const updated = FavoriteModel.updateFavorite(id, updates);
-  if (!updated) {
-    throw new NotFoundError('ไม่พบรายการโปรดนี้');
+  try {
+    return await FavoriteModel.updateFavorite(id, updates);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+      throw new NotFoundError('ไม่พบรายการโปรดนี้');
+    }
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      throw new ValidationError('URL นี้ถูกใช้ไปแล้วในระบบรายการโปรด');
+    }
+    throw err;
   }
-  return updated;
 }
 
-export function removeFavorite(id: string) {
-  const deleted = FavoriteModel.deleteFavorite(id);
-  if (!deleted) {
-    throw new NotFoundError('ไม่พบรายการโปรดนี้');
+export async function removeFavorite(id: string) {
+  try {
+    return await FavoriteModel.deleteFavorite(id);
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
+      throw new NotFoundError('ไม่พบรายการโปรดนี้');
+    }
+    throw err;
   }
-  return deleted;
 }

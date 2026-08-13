@@ -6,7 +6,7 @@ export const GET = withErrorHandling(async (
   { params }: { params: Promise<{ id: string }> }
 ) => {
   const { id } = await params;
-  const favorite = getFavoriteById(id);
+  const favorite = await getFavoriteById(id);
   return Response.json({ favorite });
 });
 
@@ -16,7 +16,7 @@ export const PATCH = withErrorHandling(async (
 ) => {
   const { id } = await params;
   const updates = await request.json();
-  const updated = editFavorite(id, updates);
+  const updated = await editFavorite(id, updates);
   return Response.json({ ok: true, item: updated });
 });
 
@@ -25,6 +25,6 @@ export const DELETE = withErrorHandling(async (
   { params }: { params: Promise<{ id: string }> }
 ) => {
   const { id } = await params;
-  removeFavorite(id);
+  await removeFavorite(id);
   return Response.json({ ok: true }, { status: 200 });
 });

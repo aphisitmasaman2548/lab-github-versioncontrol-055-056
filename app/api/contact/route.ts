@@ -13,8 +13,13 @@ export const GET = withErrorHandling(async (request: Request) => {
   return Response.json({ messages: filtered });
 });
 
+import { cookies } from 'next/headers';
+
 export const POST = withErrorHandling(async (request: Request) => {
+  const cookieStore = await cookies();
+  const sessionUserId = cookieStore.get('session')?.value;
+
   const body = await request.json();
-  const saved = await createMessage(body);
+  const saved = await createMessage(body, sessionUserId);
   return Response.json({ ok: true, item: saved }, { status: 201 });
 });

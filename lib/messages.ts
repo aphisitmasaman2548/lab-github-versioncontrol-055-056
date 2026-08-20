@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 
-export async function addMessage(data: { name: string; email: string; message: string }) {
+export async function addMessage(data: { name: string; email: string; message: string; authorId?: string }) {
   return prisma.message.create({ data });
 }
 

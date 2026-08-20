@@ -1,13 +1,23 @@
 import * as MessageModel from './messages';
-import { NotFoundError, ValidationError } from './errors';
+import { NotFoundError, ValidationError, ForbiddenError } from './errors';
 import { Prisma } from '@prisma/client';
+import { messageSchema } from './schemas';
+import { ZodError } from 'zod';
+import { cleanRichText } from './sanitize';
 
-export async function createMessage(data: { name: string; email: string; message: string }) {
-  if (!data.name || !data.email || !data.message) {
-    throw new ValidationError('ข้อมูลไม่ครบ');
-  }
+export async function createMessage(raw: unknown, sessionUserId?: string) {
+  let data;
   try {
-    return await MessageModel.addMessage(data);
+    data = messageSchema.parse(raw);
+  } catch (err) {
+    if (err instanceof ZodError) throw new ValidationError(err.issues[0].message);
+    throw err;
+  }
+  
+  const safeText = cleanRichText(data.message);
+  
+  try {
+    return await MessageModel.addMessage({ ...data, message: safeText, authorId: sessionUserId });
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       throw new ValidationError('อีเมลนี้ถูกใช้แล้ว');
@@ -28,21 +38,41 @@ export async function getMessageById(id: string) {
   return item;
 }
 
-export async function editMessage(id: string, updates: Partial<{ message: string; name?: string; email?: string }>) {
-  if (updates.message !== undefined && updates.message.trim() === '') {
-    throw new ValidationError('ข้อความห้ามเป็นค่าว่าง');
+export async function editMessage(id: string, updates: any, sessionUserId?: string) {
+  const message = await getMessageById(id);
+  
+  if (message.authorId !== sessionUserId) {
+    throw new ForbiddenError('คุณไม่มีสิทธิ์แก้ไขข้อความนี้');
   }
+
+  let data;
   try {
-    return await MessageModel.updateMessage(id, updates);
+    data = messageSchema.partial().parse(updates);
+  } catch (err) {
+    if (err instanceof ZodError) throw new ValidationError(err.issues[0].message);
+    throw err;
+  }
+
+  if (data.message) {
+    data.message = cleanRichText(data.message);
+  }
+
+  try {
+    return await MessageModel.updateMessage(id, data);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') {
-      return null; // คืนค่า null เพื่อให้ Controller ตอบ Status 404 เหมือนเดิม
+      return null;
     }
     throw err;
   }
 }
 
-export async function removeMessage(id: string) {
+export async function removeMessage(id: string, sessionUserId?: string) {
+  const message = await getMessageById(id);
+  if (message.authorId !== sessionUserId) {
+    throw new ForbiddenError('คุณไม่มีสิทธิ์ลบข้อความนี้');
+  }
+
   try {
     return await MessageModel.deleteMessage(id);
   } catch (err) {

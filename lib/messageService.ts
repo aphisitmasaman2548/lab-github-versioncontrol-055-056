@@ -13,9 +13,9 @@ export async function createMessage(raw: unknown, sessionUserId?: string) {
     if (err instanceof ZodError) throw new ValidationError(err.issues[0].message);
     throw err;
   }
-  
+
   const safeText = cleanRichText(data.message);
-  
+
   try {
     return await MessageModel.addMessage({ ...data, message: safeText, authorId: sessionUserId });
   } catch (err) {
@@ -40,7 +40,7 @@ export async function getMessageById(id: string) {
 
 export async function editMessage(id: string, updates: any, sessionUserId?: string) {
   const message = await getMessageById(id);
-  
+
   if (message.authorId !== sessionUserId) {
     throw new ForbiddenError('คุณไม่มีสิทธิ์แก้ไขข้อความนี้');
   }
@@ -81,4 +81,13 @@ export async function removeMessage(id: string, sessionUserId?: string) {
     }
     throw err;
   }
+}
+//เพิ่มมาใหม่ตาม Task 1.2
+export async function listMessages(search?: string) {
+  const all = await MessageModel.getMessages();
+  if (!search) return all;
+  return all.filter((m) =>
+    m.name.includes(search) ||
+    m.message.includes(search)
+  );
 }

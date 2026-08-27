@@ -82,7 +82,8 @@ export async function removeMessage(id: string, sessionUserId?: string) {
     throw err;
   }
 }
-//เพิ่มมาใหม่ตาม Task 1.2
+// เพิ่มมาใหม่ตาม Task 1.2
+// Task 2.3: เพิ่ม comment เพื่อตั้งใจให้เกิด conflict
 export async function listMessages(search?: string) {
   const all = await MessageModel.getMessages();
   if (!search) return all;
